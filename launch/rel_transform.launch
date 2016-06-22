@@ -1,0 +1,13 @@
+<launch>
+  <node pkg="an_ros_tools" type="rel_transform" name="rel_transform"><!--
+    <remap from="odom1" to="/vicon/dji_m100/odom" />
+    <remap from="odom2" to="/vicon/april_cross/odom" />
+    <remap from="pose1" to="/vicon/dji_m100/pose" />
+    <remap from="pose2" to="/vicon/april_cross/pose" />-->
+    <remap from="odom1" to="/vicon/april_cross/odom" />
+    <remap from="odom2" to="/vicon/dji_m100/odom" />
+    <remap from="pose1" to="/vicon/april_cross/pose" />
+    <remap from="pose2" to="/vicon/dji_m100/pose" />
+  </node>
+
+</launch>
