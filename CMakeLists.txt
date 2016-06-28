@@ -5,10 +5,12 @@ project(an_ros_tools)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED
-  geometry_msgs
   roscpp
   message_filters
   tf
+  geometry_msgs
+  nav_msgs
+  dji_sdk
 )
 
 ## Generate added messages and services with any dependencies listed here
@@ -29,7 +31,7 @@ find_package(catkin REQUIRED
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES an_ros_tools
-   CATKIN_DEPENDS roscpp geometry_msgs message_filters nav_msgs tf
+   CATKIN_DEPENDS roscpp geometry_msgs message_filters nav_msgs tf dji_sdk
 #  DEPENDS system_lib
 )
 
@@ -41,12 +43,11 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 
-## Declare a C++ executable
-add_executable(
-  rel_transform src/rel_transform.cpp
-)
+add_executable(rel_transform src/rel_transform.cpp)
+target_link_libraries(rel_transform ${catkin_LIBRARIES})
 
-## Specify libraries to link a library or executable target against
-target_link_libraries(rel_transform
- ${catkin_LIBRARIES}
-)
+add_executable(odom2tf src/odom2tf.cpp)
+target_link_libraries(odom2tf ${catkin_LIBRARIES})
+
+add_executable(pos_normalizer src/pos_normalizer.cpp)
+target_link_libraries(pos_normalizer ${catkin_LIBRARIES})

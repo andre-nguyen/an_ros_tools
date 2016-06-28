@@ -45,6 +45,7 @@
   <depend>message_filters</depend>
   <depend>nav_msgs</depend>
   <depend>tf</depend>
+  <depend>dji_sdk</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
