@@ -41,7 +41,7 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-# include_directories(include)
+include_directories(include)
 
 add_executable(rel_transform src/rel_transform.cpp)
 target_link_libraries(rel_transform ${catkin_LIBRARIES})
@@ -49,5 +49,5 @@ target_link_libraries(rel_transform ${catkin_LIBRARIES})
 add_executable(odom2tf src/odom2tf.cpp)
 target_link_libraries(odom2tf ${catkin_LIBRARIES})
 
-add_executable(pos_normalizer src/pos_normalizer.cpp)
+add_executable(pos_normalizer src/pos_normalizer.cpp src/transform.cpp)
 target_link_libraries(pos_normalizer ${catkin_LIBRARIES})

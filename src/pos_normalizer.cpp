@@ -5,36 +5,14 @@
 #include <dji_sdk/GlobalPosition.h>
 #include <dji_sdk/LocalPosition.h>
 #include <nav_msgs/Odometry.h>
+#include <eigen3/Eigen/Dense>
 
-#define C_EARTH (double) 6378137.0
-#define C_PI (double) 3.141592653589793
-#define DEG2RAD(DEG) ((DEG)*((C_PI)/(180.0)))
+#include "transform.h"
 
 dji_sdk::GlobalPosition global_pos_ref;
 dji_sdk::LocalPosition local_pos_ref;
 bool first_pos_rcvd = false;
 ros::Publisher odom_norm_pub, odom_norm_ENU_pub;
-
-void gps_convert_ned(float &ned_x, float &ned_y,
-        double gps_t_lon, double gps_t_lat,
-        double gps_r_lon, double gps_r_lat)
-{
-    double d_lon = gps_t_lon - gps_r_lon;
-    double d_lat = gps_t_lat - gps_r_lat;
-    ned_x = DEG2RAD(d_lat) * C_EARTH;
-    ned_y = DEG2RAD(d_lon) * C_EARTH * cos(DEG2RAD(gps_t_lat));
-}
-
-dji_sdk::LocalPosition gps_convert_ned(dji_sdk::GlobalPosition loc)
-{
-    dji_sdk::LocalPosition local;
-    gps_convert_ned(local.x, local.y,
-        loc.longitude, loc.latitude,
-        global_pos_ref.longitude, global_pos_ref.latitude
-    );
-    local.z = loc.height;
-    return local;
-}
 
 void callback(const dji_sdk::GlobalPositionConstPtr& global_pos,
               const nav_msgs::OdometryConstPtr& odometry)
@@ -45,21 +23,38 @@ void callback(const dji_sdk::GlobalPositionConstPtr& global_pos,
     }
 
     nav_msgs::Odometry odom_norm = *odometry;
-    local_pos_ref = gps_convert_ned(*global_pos);
+    local_pos_ref = gps_convert_ned(*global_pos, global_pos_ref);
     odom_norm.pose.pose.position.x = local_pos_ref.x;
     odom_norm.pose.pose.position.y = local_pos_ref.y;
     odom_norm.pose.pose.position.z = -local_pos_ref.z;
+    odom_norm.twist.twist.linear.z *= -1;
     odom_norm_pub.publish(odom_norm);
 
     // god dammit dji
     nav_msgs::Odometry odom_norm_ENU = *odometry;
-    // the following 3 lines should give an actual NED
-    odom_norm_ENU.pose.pose.position.x = local_pos_ref.y;
-    odom_norm_ENU.pose.pose.position.y = local_pos_ref.z;
-    odom_norm_ENU.pose.pose.position.z = local_pos_ref.z;
-    odom_norm_ENU.twist.twist.linear.x = odom_norm.twist.twist.linear.y;
-    odom_norm_ENU.twist.twist.linear.y = odom_norm.twist.twist.linear.x;
-    // looks like vz is already up
+    // The code above was for NED now convert to ENU
+    Eigen::Vector3d position_ENU = ned2enu(Eigen::Vector3d(local_pos_ref.x,
+                                                           local_pos_ref.y,
+                                                           -local_pos_ref.z));
+    Eigen::Quaterniond orientation_ENU = ned2enu(Eigen::Quaterniond(
+        odom_norm.pose.pose.orientation.w, odom_norm.pose.pose.orientation.x,
+        odom_norm.pose.pose.orientation.y, odom_norm.pose.pose.orientation.z));
+    // wtf is this NEU? NED?
+    Eigen::Vector3d velocity_ENU = ned2enu(Eigen::Vector3d(
+        odom_norm.twist.twist.linear.x, odom_norm.twist.twist.linear.y,
+        -odom_norm.twist.twist.linear.z));
+
+    odom_norm_ENU.pose.pose.position.x = position_ENU(0);
+    odom_norm_ENU.pose.pose.position.y = position_ENU(1);
+    odom_norm_ENU.pose.pose.position.z = position_ENU(2);
+    odom_norm_ENU.pose.pose.orientation.w = orientation_ENU.w();
+    odom_norm_ENU.pose.pose.orientation.x = orientation_ENU.x();
+    odom_norm_ENU.pose.pose.orientation.y = orientation_ENU.y();
+    odom_norm_ENU.pose.pose.orientation.z = orientation_ENU.z();
+    odom_norm_ENU.twist.twist.linear.x = velocity_ENU(0);
+    odom_norm_ENU.twist.twist.linear.y = velocity_ENU(1);
+    odom_norm_ENU.twist.twist.linear.z = velocity_ENU(2);
+
     odom_norm_ENU_pub.publish(odom_norm_ENU);
 }
 
@@ -69,7 +64,7 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "pos_normalizer");
     ros::NodeHandle nh;
     odom_norm_pub = nh.advertise<nav_msgs::Odometry>
-            ("/dji_sdk/odometry_normalized", 10);
+            ("/dji_sdk/odometry_normalized_NED", 10);
     odom_norm_ENU_pub = nh.advertise<nav_msgs::Odometry>
             ("/dji_sdk/odometry_normalized_ENU", 10);
     message_filters::Subscriber<dji_sdk::GlobalPosition>
@@ -83,7 +78,6 @@ int main(int argc, char** argv)
     sync.registerCallback(boost::bind(&callback, _1, _2));
 
     ros::spin();
-
 
     return 0;
 }
